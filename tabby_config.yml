@@ -57,8 +57,8 @@ model:
 
   # Cache size in tokens (for KV cache)
   # This limits actual usable context. Higher = more VRAM
-  # 32K is a good balance for 48GB total VRAM
-  cache_size: 32768
+  # 64K fits well with 48GB total VRAM for most models
+  cache_size: 65536
 
   # Use 8-bit KV cache to save VRAM (slight quality tradeoff)
   cache_mode: Q8
