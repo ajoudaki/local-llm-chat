@@ -1,0 +1,39 @@
+# Data directories (user data, chat history, settings)
+data/
+
+# Log files
+logs/
+*.log
+
+# Downloaded models (large files, download separately)
+models/
+
+# TabbyAPI source (cloned during setup)
+tabbyapi/
+
+# Python virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environment files with secrets
+.env
+.env.local
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# PID files
+*.pid

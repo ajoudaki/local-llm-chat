@@ -1,0 +1,50 @@
+# Open WebUI Docker Compose Configuration
+# Connects to TabbyAPI running natively on the host
+#
+# Note: Using docker-compose v2 syntax without default values for v1 compatibility
+
+version: "3.3"
+
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    ports:
+      - "3000:8080"
+    volumes:
+      # Persistent storage for user data, settings, chat history
+      - ./data/open-webui:/app/backend/data
+    environment:
+      # Connect to TabbyAPI on host machine via docker bridge IP
+      - OPENAI_API_BASE_URL=http://172.17.0.1:5000/v1
+      - OPENAI_API_KEY=not-needed
+
+      # Disable Ollama integration (we're using TabbyAPI only)
+      - OLLAMA_BASE_URL=
+      - ENABLE_OLLAMA_API=false
+
+      # Privacy settings
+      - WEBUI_AUTH=True
+      - ENABLE_SIGNUP=True
+      - ENABLE_COMMUNITY_SHARING=false
+      - ENABLE_MESSAGE_RATING=false
+
+      # Disable telemetry and analytics
+      - SCARF_NO_ANALYTICS=true
+      - DO_NOT_TRACK=true
+      - ANONYMIZED_TELEMETRY=false
+
+      # Performance
+      - WEBUI_SECRET_KEY=change-me-in-production
+
+    extra_hosts:
+      # Allow container to reach host's localhost
+      - "host.docker.internal:host-gateway"
+
+    # Health check (simplified for docker-compose v1 compatibility)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

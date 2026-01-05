@@ -1,0 +1,96 @@
+# TabbyAPI Configuration
+# For ExLlamaV2 inference with dual RTX 3090 (tensor parallelism)
+#
+# Documentation: https://github.com/theroyallab/tabbyAPI
+
+# =============================================================================
+# Network Configuration
+# =============================================================================
+network:
+  # Bind to all interfaces so Docker containers can connect
+  # Note: Firewall recommended to block external access (see README)
+  host: 0.0.0.0
+  port: 5000
+
+  # Disable API key requirement for local use
+  # (Open WebUI connects locally, no auth needed)
+  disable_auth: true
+
+# =============================================================================
+# Logging Configuration
+# =============================================================================
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR
+  log_level: INFO
+
+  # PRIVACY: Disable prompt logging to prevent sensitive data on disk
+  log_prompt: false
+
+# =============================================================================
+# Model Configuration
+# =============================================================================
+model:
+  # Path to models directory (relative to TabbyAPI or absolute)
+  model_dir: ../models
+
+  # Model to load on startup (folder name within model_dir)
+  # Default: small 3B model for testing; change after downloading larger models
+  model_name: Llama-3.2-3B-Instruct-exl2_6_5
+
+  # IMPORTANT: Enable inline model loading for Open WebUI integration
+  # This allows switching models from the UI dropdown
+  inline_model_loading: true
+
+  # Maximum sequence length (context window)
+  # 8192 is a good balance for 70B models on 48GB VRAM
+  max_seq_len: 8192
+
+  # Enable tensor parallelism across multiple GPUs
+  tensor_parallel: true
+
+  # GPU memory allocation
+  # "auto" = automatically distribute across available GPUs
+  # Can also specify explicit split like [24, 24] for manual control
+  gpu_split_auto: true
+
+  # Cache size in tokens (for KV cache)
+  # Should be <= max_seq_len, uses VRAM
+  cache_size: 8192
+
+  # Use 8-bit KV cache to save VRAM (slight quality tradeoff)
+  cache_mode: Q8
+
+  # Rope scaling (usually auto-detected from model config)
+  # rope_scale: 1.0
+  # rope_alpha: 1.0
+
+  # Number of experts per token for MoE models (ignored for dense models)
+  # num_experts_per_token: 2
+
+# =============================================================================
+# Generation Defaults
+# =============================================================================
+generation:
+  # Default generation parameters (can be overridden per-request)
+  temperature: 0.7
+  top_p: 0.9
+  top_k: 40
+  min_p: 0.05
+  repetition_penalty: 1.05
+
+# =============================================================================
+# Embeddings (disabled - not needed for chat)
+# =============================================================================
+embeddings:
+  embedding_model_dir: ../models
+  embedding_model_name: null
+
+# =============================================================================
+# Developer Options
+# =============================================================================
+developer:
+  # Disable CUDA graphs (may help with stability on some systems)
+  # cuda_graphs: false
+
+  # Enable unsafe features (not recommended)
+  unsafe_launch: false
