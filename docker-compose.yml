@@ -11,7 +11,7 @@ services:
     container_name: open-webui
     restart: unless-stopped
     ports:
-      - "3000:8080"
+      - "127.0.01:3000:8080"
     volumes:
       # Persistent storage for user data, settings, chat history
       - ./data/open-webui:/app/backend/data

@@ -249,9 +249,9 @@ if [ -f "requirements.txt" ]; then
 fi
 
 # Install with CUDA support - TabbyAPI uses pyproject.toml
-# Install the cu121 extras for CUDA 12.x support
+# Install the cu12 extras for CUDA 12.x support
 log_info "Installing TabbyAPI with CUDA 12.x support..."
-pip install .[cu121]
+pip install .[cu12]
 
 cd "$SCRIPT_DIR"
 log_ok "Dependencies installed"
