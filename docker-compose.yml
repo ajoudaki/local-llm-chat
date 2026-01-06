@@ -17,7 +17,7 @@ services:
       - ./data/open-webui:/app/backend/data
     environment:
       # Connect to TabbyAPI on host machine via docker bridge IP
-      - OPENAI_API_BASE_URL=http://172.17.0.1:5000/v1
+      - OPENAI_API_BASE_URL=http://172.18.0.1:5000/v1
       - OPENAI_API_KEY=not-needed
 
       # Disable Ollama integration (we're using TabbyAPI only)
