@@ -1,23 +1,34 @@
 # Open WebUI Docker Compose Configuration
 # Connects to TabbyAPI running natively on the host
 #
+# Services:
+#   - open-webui: Chat interface (port 3000)
+#   - openedai-speech: Text-to-speech API (port 8000)
+#   - whisper: Speech-to-text API (port 8001)
+#   - comfyui: Image generation (port 8188)
+#
 # Note: Using docker-compose v2 syntax without default values for v1 compatibility
 
 version: "3.3"
 
 services:
+  # ==========================================================================
+  # Open WebUI - Chat Interface
+  # ==========================================================================
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
     container_name: open-webui
     restart: unless-stopped
-    ports:
-      - "127.0.01:3000:8080"
+    network_mode: host
     volumes:
       # Persistent storage for user data, settings, chat history
       - ./data/open-webui:/app/backend/data
     environment:
-      # Connect to TabbyAPI on host machine via docker bridge IP
-      - OPENAI_API_BASE_URL=http://172.18.0.1:5000/v1
+      # Port to listen on (host network mode)
+      - PORT=3000
+
+      # Connect to TabbyAPI on localhost (host network mode)
+      - OPENAI_API_BASE_URL=http://127.0.0.1:5000/v1
       - OPENAI_API_KEY=not-needed
 
       # Disable Ollama integration (we're using TabbyAPI only)
@@ -38,13 +49,92 @@ services:
       # Performance
       - WEBUI_SECRET_KEY=change-me-in-production
 
-    extra_hosts:
-      # Allow container to reach host's localhost
-      - "host.docker.internal:host-gateway"
+      # Image generation via ComfyUI (localhost since host network)
+      - ENABLE_IMAGE_GENERATION=true
+      - IMAGE_GENERATION_ENGINE=comfyui
+      - COMFYUI_BASE_URL=http://127.0.0.1:8188
 
-    # Health check (simplified for docker-compose v1 compatibility)
+      # Text-to-Speech via OpenedAI Speech
+      - AUDIO_TTS_ENGINE=openai
+      - AUDIO_TTS_OPENAI_API_BASE_URL=http://127.0.0.1:8000/v1
+      - AUDIO_TTS_OPENAI_API_KEY=sk-unused
+      - AUDIO_TTS_MODEL=tts-1
+      - AUDIO_TTS_VOICE=alloy
+
+      # Speech-to-Text via Faster Whisper
+      - AUDIO_STT_ENGINE=openai
+      - AUDIO_STT_OPENAI_API_BASE_URL=http://127.0.0.1:8001/v1
+      - AUDIO_STT_OPENAI_API_KEY=sk-unused
+      - AUDIO_STT_MODEL=Systran/faster-whisper-base
+
+    # Health check
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # ==========================================================================
+  # OpenedAI Speech - Text-to-Speech (CPU-only, Piper TTS)
+  # ==========================================================================
+  openedai-speech:
+    image: ghcr.io/matatonic/openedai-speech-min
+    container_name: openedai-speech
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./data/openedai-speech/voices:/app/voices
+      - ./data/openedai-speech/config:/app/config
+    networks:
+      - localchat
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================================================
+  # Whisper - Speech-to-Text (OpenAI-compatible API)
+  # Requires: nvidia-docker2 with nvidia as default runtime
+  # ==========================================================================
+  whisper:
+    image: fedirz/faster-whisper-server:latest-cuda
+    container_name: whisper
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8001:8000"
+    volumes:
+      - ./data/whisper:/root/.cache/huggingface
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      # Use base model for fast transcription (upgrade to medium/large-v3 for accuracy)
+      - WHISPER__MODEL=Systran/faster-whisper-base
+    networks:
+      - localchat
+
+  # ==========================================================================
+  # ComfyUI - Image Generation (Stable Diffusion)
+  # Requires: nvidia-docker2 with nvidia as default runtime
+  # ==========================================================================
+  comfyui:
+    image: obeliks/comfyui:master-cu121
+    container_name: comfyui
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8188:8188"
+    volumes:
+      # Persistent storage for models, outputs, and custom nodes
+      - ./data/comfyui:/root
+      - ./data/comfyui/ComfyUI/models:/app/models
+      - ./data/comfyui/ComfyUI/output:/app/output
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CLI_ARGS=--listen 0.0.0.0
+    networks:
+      - localchat
+
+networks:
+  localchat:
+    driver: bridge

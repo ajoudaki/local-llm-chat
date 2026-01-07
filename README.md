@@ -12,6 +12,14 @@ Optimized for dual RTX 3090 (48GB total VRAM) running 70B-class models with tens
 - **Model Switching**: Switch between models directly from the Open WebUI dropdown
 - **OpenAI-Compatible API**: Use with any OpenAI-compatible client
 
+### Extended Capabilities
+
+- **Voice Output (TTS)**: Read responses aloud using Piper TTS
+- **Voice Input (STT)**: Speak instead of type using Faster Whisper
+- **Vision/Image Input**: Ask questions about uploaded images (requires vision model)
+- **Image Generation**: Create images from text prompts via ComfyUI/Stable Diffusion
+- **Code Execution**: Run Python/Bash code in a sandboxed environment
+
 ## Quick Start
 
 ```bash
@@ -62,24 +70,54 @@ If `docker ps` requires sudo, you may need to:
 1. Log out and log back in after adding yourself to the docker group
 2. Or run `newgrp docker` in your current terminal
 
+### NVIDIA Container Toolkit (for GPU services)
+
+Whisper and ComfyUI require GPU access in Docker. Install nvidia-container-toolkit and set it as default:
+
+```bash
+# Install nvidia-container-toolkit
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | \
+  sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+sudo apt update && sudo apt install -y nvidia-container-toolkit
+
+# Set nvidia as default Docker runtime
+sudo nvidia-ctk runtime configure --runtime=docker --set-as-default
+sudo systemctl restart docker
+
+# Verify GPU access works
+docker run --rm nvidia/cuda:12.0-base nvidia-smi
+```
+
 ## Architecture
 
 ```
-┌─────────────────────┐     ┌─────────────────────┐
-│   Open WebUI        │────▶│     TabbyAPI        │
-│   (Docker)          │     │  (Native Python)    │
-│   Port 3000         │     │   Port 5000         │
-└─────────────────────┘     └─────────────────────┘
-                                    │
-                           ┌────────┴────────┐
-                           │   ExLlamaV2     │
-                           │ Tensor Parallel │
-                           └────────┬────────┘
-                                    │
-                           ┌────────┴────────┐
-                           │  GPU(s)         │
-                           │  (VRAM)         │
-                           └─────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                         Docker Network                          │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌────────┐ │
+│  │ Open WebUI  │  │  OpenedAI   │  │   Whisper   │  │ComfyUI │ │
+│  │  Port 3000  │  │   Speech    │  │  Port 8001  │  │  8188  │ │
+│  │   (Chat)    │  │  Port 8000  │  │   (STT)     │  │(Images)│ │
+│  └──────┬──────┘  └─────────────┘  └─────────────┘  └────────┘ │
+└─────────┼───────────────────────────────────────────────────────┘
+          │
+          ▼
+┌─────────────────────┐
+│     TabbyAPI        │
+│  (Native Python)    │
+│   Port 5000         │
+└─────────┬───────────┘
+          │
+ ┌────────┴────────┐
+ │   ExLlamaV2     │
+ │ Tensor Parallel │
+ └────────┬────────┘
+          │
+ ┌────────┴────────┐
+ │  GPU 0 + GPU 1  │
+ │  (48GB VRAM)    │
+ └─────────────────┘
 ```
 
 ## Files
@@ -263,9 +301,126 @@ API documentation: http://localhost:5000/docs
 | QwQ-32B | ~24GB | Reasoning, complex tasks |
 | Llama-3.3-70B | ~40GB | Best quality, requires multi-GPU |
 
+### Vision Models
+
+To use image input features, download a vision-capable model:
+
+```bash
+# Qwen2-VL 7B (good balance of quality and speed)
+./setup.sh download-model bartowski/Qwen2-VL-7B-Instruct-exl2 6_5
+
+# LLaVA 1.6 Mistral 7B
+./setup.sh download-model bartowski/llava-v1.6-mistral-7b-hf-exl2 6_5
+```
+
+Then update `tabby_config.yml` to use the vision model and restart TabbyAPI.
+
+## Extended Features Configuration
+
+After starting services (`./start.sh`), configure these features in the Open WebUI Admin Panel.
+
+### Text-to-Speech (Voice Output)
+
+Reads LLM responses aloud using Piper TTS (runs on CPU).
+
+**Configuration:**
+1. Go to **Admin Panel → Settings → Audio**
+2. Under **Text-to-Speech**:
+   - Engine: `OpenAI`
+   - API Base URL: `http://openedai-speech:8000/v1`
+   - API Key: `sk-unused` (any value works)
+   - TTS Model: `tts-1`
+   - TTS Voice: `alloy` (or: echo, fable, onyx, nova, shimmer)
+
+**Test:** Click the speaker icon on any LLM response to hear it read aloud.
+
+### Speech-to-Text (Voice Input)
+
+Transcribe your voice to text using Faster Whisper (runs on GPU).
+
+**Configuration:**
+1. Go to **Admin Panel → Settings → Audio**
+2. Under **Speech-to-Text**:
+   - Engine: `OpenAI`
+   - API Base URL: `http://whisper:8000/v1`
+   - API Key: `sk-unused` (any value works)
+   - STT Model: `Systran/faster-whisper-base`
+
+**Upgrade model for better accuracy:**
+Edit `docker-compose.yml` and change `WHISPER__MODEL`:
+- `Systran/faster-whisper-base` - Fast, ~1GB VRAM
+- `Systran/faster-whisper-medium` - Balanced, ~2GB VRAM
+- `Systran/faster-whisper-large-v3` - Best quality, ~4GB VRAM
+
+**Test:** Click the microphone icon in the chat input to speak.
+
+### Vision / Image Input
+
+Ask questions about uploaded images. Requires a vision-capable model.
+
+**Configuration:**
+1. Ensure `vision: true` is set in `tabby_config.yml` (already enabled)
+2. Download and load a vision model (see "Vision Models" above)
+3. Restart TabbyAPI: `./stop.sh && ./start.sh`
+
+**Test:** Upload an image in chat and ask "What's in this image?"
+
+### Image Generation
+
+Generate images from text prompts using Stable Diffusion via ComfyUI.
+
+**Initial Setup (one-time):**
+1. Open ComfyUI directly: http://localhost:8188
+2. Download a Stable Diffusion model (e.g., SDXL, SD 1.5)
+   - Place in `./data/comfyui/ComfyUI/models/checkpoints/`
+3. Create or load a workflow in ComfyUI
+4. Enable Dev Mode: Settings → Dev Mode Options → Enable Dev Mode
+5. Export workflow: Menu → Export → Export (API Format)
+6. Save the JSON file
+
+**Open WebUI Configuration:**
+1. Go to **Admin Panel → Settings → Images**
+2. Image Generation Engine: `ComfyUI`
+3. ComfyUI Base URL: `http://comfyui:8188`
+4. Click "Upload Workflow" and select your exported JSON
+5. Map the workflow nodes (Prompt, Model, Seed, etc.)
+
+**Test:** In chat, ask "Generate an image of a sunset over mountains"
+
+### Code Execution
+
+Run Python and Bash code generated by the LLM in a sandboxed environment.
+
+**Setup:**
+1. Go to **Admin Panel → Functions**
+2. Click **Import from Community** (or the + button)
+3. Search for `run_code` by `etienneperot`
+4. Install both:
+   - **run_code function**: Adds "Run" button to code blocks
+   - **run_code tool**: Lets LLM execute code autonomously
+
+**Test:** Ask the LLM to write Python code, then click the "Run" button on the code block.
+
+**Note:** Code runs in a gVisor sandbox (same technology as ChatGPT). Supports Python and Bash.
+
+## Service Ports
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| Open WebUI | 3000 | Chat interface |
+| TabbyAPI | 5000 | LLM inference API |
+| OpenedAI Speech | 8000 | Text-to-Speech API |
+| Whisper | 8001 | Speech-to-Text API |
+| ComfyUI | 8188 | Image generation |
+
+All ports bind to `127.0.0.1` (localhost only) for security.
+
 ## License
 
 This setup configuration is provided as-is. See individual project licenses:
 - [ExLlamaV2](https://github.com/turboderp/exllamav2) - MIT
 - [TabbyAPI](https://github.com/theroyallab/tabbyAPI) - AGPL-3.0
 - [Open WebUI](https://github.com/open-webui/open-webui) - MIT
+- [OpenedAI Speech](https://github.com/matatonic/openedai-speech) - AGPL-3.0
+- [Faster Whisper](https://github.com/SYSTRAN/faster-whisper) - MIT
+- [ComfyUI](https://github.com/comfyanonymous/ComfyUI) - GPL-3.0

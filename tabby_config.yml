@@ -63,6 +63,11 @@ model:
   # Use 8-bit KV cache to save VRAM (slight quality tradeoff)
   cache_mode: Q8
 
+  # Enable vision/multimodal support for compatible models
+  # Requires a vision-capable model (e.g., Qwen2-VL, LLaVA, etc.)
+  # Set to true only when using a vision model
+  vision: false
+
   # Rope scaling (usually auto-detected from model config)
   # rope_scale: 1.0
   # rope_alpha: 1.0

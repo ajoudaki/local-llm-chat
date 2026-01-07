@@ -287,16 +287,40 @@ else
 fi
 
 # ============================================================================
-# Pull Open WebUI Docker image
+# Pull Docker images for all services
 # ============================================================================
 
 if command -v docker &> /dev/null; then
-    log_info "Pulling Open WebUI Docker image..."
+    log_info "Creating data directories for services..."
+    mkdir -p "${SCRIPT_DIR}/data/open-webui"
+    mkdir -p "${SCRIPT_DIR}/data/openedai-speech/voices"
+    mkdir -p "${SCRIPT_DIR}/data/openedai-speech/config"
+    mkdir -p "${SCRIPT_DIR}/data/whisper"
+    mkdir -p "${SCRIPT_DIR}/data/comfyui"
+    log_ok "Data directories created"
+
+    log_info "Pulling Docker images (this may take a while)..."
+
+    # Open WebUI - Chat interface
+    log_info "  Pulling Open WebUI..."
     docker pull ghcr.io/open-webui/open-webui:main
-    log_ok "Open WebUI image ready"
+
+    # OpenedAI Speech - Text-to-Speech (CPU-only, small image)
+    log_info "  Pulling OpenedAI Speech (TTS)..."
+    docker pull ghcr.io/matatonic/openedai-speech-min
+
+    # Faster Whisper - Speech-to-Text
+    log_info "  Pulling Faster Whisper (STT)..."
+    docker pull fedirz/faster-whisper-server:latest-cuda
+
+    # ComfyUI - Image Generation
+    log_info "  Pulling ComfyUI (Image Generation)..."
+    docker pull obeliks/comfyui:master-cu121
+
+    log_ok "All Docker images ready"
 else
-    log_warn "Docker not found - skipping Open WebUI image pull"
-    log_warn "Install Docker to use Open WebUI"
+    log_warn "Docker not found - skipping Docker image pulls"
+    log_warn "Install Docker to use Open WebUI and other services"
 fi
 
 # ============================================================================
@@ -318,8 +342,15 @@ if [ -d "$MODEL_LOCAL_DIR" ]; then
     echo "  - ${MODEL_LOCAL_DIR}"
     echo ""
 fi
+echo "Docker services configured:"
+echo "  - Open WebUI (Chat):     http://localhost:3000"
+echo "  - OpenedAI Speech (TTS): http://localhost:8000"
+echo "  - Whisper (STT):         http://localhost:8001"
+echo "  - ComfyUI (Images):      http://localhost:8188"
+echo ""
 echo "Next steps:"
 echo "  1. Review/edit tabby_config.yml if needed"
 echo "  2. Run ./start.sh to start all services"
 echo "  3. Open http://localhost:3000 in your browser"
+echo "  4. Configure audio/image settings in Admin Panel (see README)"
 echo ""
