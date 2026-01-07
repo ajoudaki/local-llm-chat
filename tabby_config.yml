@@ -35,30 +35,30 @@ model:
 
   # Model to load on startup (folder name within model_dir)
   # Default: small 3B model for testing; change after downloading larger models
-  model_name: Llama-3.2-3B-Instruct-exl2_6_5
+  model_name: Qwen3-30B-A3B-Thinking-2507-exl3_6bpw
 
   # IMPORTANT: Enable inline model loading for Open WebUI integration
   # This allows switching models from the UI dropdown
   inline_model_loading: true
 
   # Maximum sequence length (context window)
-  # -1 = automatically use model's max from config.json
-  # Can be reduced per-request from UI if needed
-  max_seq_len: -1
+  # Vision models need more context for image tokens (~4K per image)
+  # Setting to 32K to handle images comfortably
+  max_seq_len: 32768
 
   # Enable tensor parallelism across multiple GPUs
   tensor_parallel: true
 
   # GPU memory allocation - explicit split for balance
-  # GPU 0: 20GB (leave room for display/system ~2GB + headroom)
-  # GPU 1: 22GB (dedicated compute)
+  # GPU 0: 21GB (leave room for display/system ~2GB + headroom)
+  # GPU 1: 21GB (even split across both GPUs)
   gpu_split_auto: false
-  gpu_split: [20, 22]
+  gpu_split: [21, 21]
 
   # Cache size in tokens (for KV cache)
   # This limits actual usable context. Higher = more VRAM
-  # 64K fits well with 48GB total VRAM for most models
-  cache_size: 65536
+  # 32K is safer for 70B models on 48GB total VRAM
+  cache_size: 32768
 
   # Use 8-bit KV cache to save VRAM (slight quality tradeoff)
   cache_mode: Q8
