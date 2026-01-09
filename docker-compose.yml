@@ -6,6 +6,9 @@
 #   - openedai-speech: Text-to-speech API (port 8000)
 #   - whisper: Speech-to-text API (port 8001)
 #   - comfyui: Image generation (port 8188)
+#   - searxng: Web search (port 8080)
+#   - jupyter: Code interpreter (port 8888)
+#   - tika: Document parsing/OCR (port 9998)
 #
 # Note: Using docker-compose v2 syntax without default values for v1 compatibility
 
@@ -158,6 +161,47 @@ services:
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================================================
+  # Jupyter - Code Interpreter Backend
+  # ==========================================================================
+  jupyter:
+    image: jupyter/scipy-notebook:latest
+    container_name: jupyter
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8888:8888"
+    volumes:
+      - ./data/jupyter:/home/jovyan/work
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    command: start-notebook.sh --NotebookApp.token='' --NotebookApp.password='' --NotebookApp.allow_origin='*' --NotebookApp.disable_check_xsrf=True
+    networks:
+      - localchat
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/api"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================================================
+  # Tika - Document Parsing and OCR Server
+  # ==========================================================================
+  tika:
+    image: apache/tika:latest
+    container_name: tika
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9998:9998"
+    networks:
+      - localchat
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9998/version"]
       interval: 30s
       timeout: 10s
       retries: 3
