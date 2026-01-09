@@ -67,6 +67,11 @@ services:
       - AUDIO_STT_OPENAI_API_KEY=sk-unused
       - AUDIO_STT_MODEL=Systran/faster-whisper-base
 
+      # Web Search via SearXNG
+      - ENABLE_RAG_WEB_SEARCH=true
+      - RAG_WEB_SEARCH_ENGINE=searxng
+      - SEARXNG_QUERY_URL=http://127.0.0.1:8080/search?q=<query>
+
     # Health check
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
@@ -134,6 +139,28 @@ services:
       - CLI_ARGS=--listen 0.0.0.0
     networks:
       - localchat
+
+  # ==========================================================================
+  # SearXNG - Privacy-respecting meta search engine for web search
+  # ==========================================================================
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./data/searxng:/etc/searxng
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8080/
+    networks:
+      - localchat
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 networks:
   localchat:
