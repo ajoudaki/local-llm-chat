@@ -1,0 +1,9 @@
+# Per-model config for Meta-Llama-3.1-8B-Instruct
+# These settings override the global config when loading via inline_model_loading
+
+model:
+  tensor_parallel: false
+  gpu_split_auto: true
+  max_seq_len: -1
+  cache_size: 65536
+  cache_mode: Q8

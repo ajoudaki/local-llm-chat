@@ -1,0 +1,10 @@
+# Per-model config for QwQ-32B
+# These settings override the global config when loading via inline_model_loading
+
+model:
+  tensor_parallel: true
+  gpu_split_auto: false
+  gpu_split: [14, 14]
+  max_seq_len: -1
+  cache_size: 65536
+  cache_mode: Q8

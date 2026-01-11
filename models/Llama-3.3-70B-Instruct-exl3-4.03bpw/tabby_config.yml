@@ -1,0 +1,10 @@
+# Per-model config for Llama-3.3-70B-Instruct EXL3
+# These settings override the global config when loading via inline_model_loading
+
+model:
+  tensor_parallel: true
+  gpu_split_auto: false
+  gpu_split: [20, 20]
+  max_seq_len: -1
+  cache_size: 24576
+  cache_mode: Q4
